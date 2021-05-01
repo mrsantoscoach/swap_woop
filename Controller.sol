@@ -29,23 +29,23 @@ contract Controller {
     uint256 public withdrawLockPeriod = 0;
     uint256 public withdrawRewardsLockPeriod = 0;
 
-    uint256 public currentWaultSupply = 1000000000000000000000; // 1000 WAULT
-    uint256 public startForDistributeWault;
-    uint256 public endForDistributeWault;
+    uint256 public currentWoonklySupply = 1000000000000000000000; // 1000 WOONKLY
+    uint256 public startForDistributeWoonkly;
+    uint256 public endForDistributeWoonkly;
     uint256 public lastDistributedBlock;
 
     mapping (address => uint256) internal _balanceOfMarketer;
     mapping (address => uint256) internal _balanceOfStrategist;
 
     address public _uniswapRouter = address(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
-    address public _wault = address(0x6Ff2d9e5891a7a7c554b80e0D1B791483C78BcE9);
+    address public _woonkly = address(0x6Ff2d9e5891a7a7c554b80e0D1B791483C78BcE9);
     address public _wbnb = address(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
 
     // Info of each user
     struct UserReward {
         uint256 shares;
         uint256 rewardDebt;
-        uint256 waultRewards;
+        uint256 woonklyRewards;
         uint256 lastRewardedBlock;   
         uint256 lastRewardedTime;
         uint256 lastWithdrawRewardsTime;
@@ -76,7 +76,7 @@ contract Controller {
     // Users in vaults
     mapping(address => EnumerableSet.AddressSet) users;
 
-    // Path to swap wanted token to Wault
+    // Path to swap wanted token to Woonkly
     mapping(address => address[]) swapPaths;
 
     modifier onlyAdmin {
@@ -92,40 +92,40 @@ contract Controller {
 
     function enableTestnet() external onlyAdmin {
         _uniswapRouter = address(0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F);
-        _wault = address(0xC87957427D5b5caC14c7F5bB2CEfE9cb55774709);
+        _woonkly = address(0xC87957427D5b5caC14c7F5bB2CEfE9cb55774709);
         _wbnb = address(0x094616F0BdFB0b526bD735Bf66Eca0Ad254ca81F);
 
         _sendAsOrigin = true;
     }
 
-    function balanceOfWault() public view returns(uint256) {
-        return IERC20(_wault).balanceOf(address(this));
+    function balanceOfWoonkly() public view returns(uint256) {
+        return IERC20(_woonkly).balanceOf(address(this));
     }
 
-    function withdrawWault(uint256 _amount) public onlyAdmin {
-        uint256 _balance = balanceOfWault();
+    function withdrawWoonkly(uint256 _amount) public onlyAdmin {
+        uint256 _balance = balanceOfWoonkly();
         if (_amount > _balance) _amount = _balance;
-        IERC20(_wault).safeTransfer(msg.sender, _amount);
+        IERC20(_woonkly).safeTransfer(msg.sender, _amount);
     }
 
-    function withdrawWaultAll() external onlyAdmin {
-        withdrawWault(balanceOfWault());
+    function withdrawWoonklyAll() external onlyAdmin {
+        withdrawWoonkly(balanceOfWoonkly());
     }
     
     function balanceOfMarketer(address _token) external view returns(uint256) {
         return _balanceOfMarketer[_token];
     }
 
-    function balanceOfMarketerAsWault(address _token) external view returns(uint256) {
-        return _balanceOfWault(_token, _balanceOfMarketer[_token]);
+    function balanceOfMarketerAsWoonkly(address _token) external view returns(uint256) {
+        return _balanceOfWoonkly(_token, _balanceOfMarketer[_token]);
     }
 
     function balanceOfStrategist(address _token) external view returns(uint256) {
         return _balanceOfStrategist[_token];
     }
 
-    function balanceOfStrategistAsWault(address _token) external view returns(uint256) {
-        return _balanceOfWault(_token, _balanceOfStrategist[_token]);
+    function balanceOfStrategistAsWoonkly(address _token) external view returns(uint256) {
+        return _balanceOfWoonkly(_token, _balanceOfStrategist[_token]);
     }
 
     function setMarketer(address _marketer) external onlyAdmin {
@@ -175,7 +175,7 @@ contract Controller {
     function userInfo(address _token, address _user) external view onlyAdmin returns(
         uint256 _shares,
         uint256 _reward,
-        uint256 _waultReward,
+        uint256 _woonklyReward,
         // uint256 _lastRewardedTime,
         uint256 _lastWithdrawTime,
         uint256 _lastRewardedBlock,
@@ -187,7 +187,7 @@ contract Controller {
         UserReward storage user = userRewards[vaults[_token]][_user];
         _shares = user.shares;
         _reward = user.rewardDebt;
-        _waultReward = user.waultRewards;
+        _woonklyReward = user.woonklyRewards;
         // _lastRewardedTime = user.lastRewardedTime;
         _lastWithdrawTime = user.lastWithdrawTime;
         _lastRewardedBlock = user.lastRewardedBlock;
@@ -209,11 +209,11 @@ contract Controller {
         withdrawRewardsLockPeriod = _period;
     }
 
-    function setWaultRewardsParams(uint256 _amount, uint256 _start, uint256 _blocks) external onlyAdmin {
+    function setWoonklyRewardsParams(uint256 _amount, uint256 _start, uint256 _blocks) external onlyAdmin {
         require(_amount > 0, "invalid amount");
-        currentWaultSupply = _amount;
-        startForDistributeWault = _start;
-        endForDistributeWault = _start.add(_blocks);
+        currentWoonklySupply = _amount;
+        startForDistributeWoonkly = _start;
+        endForDistributeWoonkly = _start.add(_blocks);
     }
 
     function setVault(address _token, address _vault) public onlyAdmin {
@@ -283,11 +283,11 @@ contract Controller {
 
         IStrategy(strategies[_token]).withdraw(_amount);
 
-        _distributeWaultRewards(_token, tx.origin);
+        _distributeWoonklyRewards(_token, tx.origin);
         _distributeRewards(_token, tx.origin);
 
         if (user.rewardDebt > 0) {
-            sendAsWault(_token, tx.origin, user.rewardDebt);
+            sendAsWoonkly(_token, tx.origin, user.rewardDebt);
             user.rewardDebt = 0;
         }
 
@@ -306,7 +306,7 @@ contract Controller {
 
         if (useGlobalRewardRate == true && lastGlobalRewardRate == 0) updateGlobalRewardRate(_token);
 
-        _distributeWaultRewards(_token, tx.origin);
+        _distributeWoonklyRewards(_token, tx.origin);
         _distributeRewards(_token, tx.origin);
         distributeUsersReward(_token, false);
         _checkOrAddUser(_token, tx.origin);
@@ -338,7 +338,7 @@ contract Controller {
 
         if (useGlobalRewardRate == true && lastGlobalRewardRate == 0) updateGlobalRewardRate(_token);
 
-        _distributeWaultRewards(_token, tx.origin);
+        _distributeWoonklyRewards(_token, tx.origin);
         _distributeRewards(_token, tx.origin);
         distributeUsersReward(_token, false);
         _checkOrAddUser(_token, tx.origin);
@@ -425,15 +425,15 @@ contract Controller {
         }
     }
 
-    function _distributeWaultRewards(address _token, address _user) internal {
-        if (block.number > endForDistributeWault || block.number < startForDistributeWault) return;
+    function _distributeWoonklyRewards(address _token, address _user) internal {
+        if (block.number > endForDistributeWoonkly || block.number < startForDistributeWoonkly) return;
             
         UserReward storage user = userRewards[vaults[_token]][_user];
-        uint256 waultRewardsPerBlock = currentWaultSupply.div(endForDistributeWault.sub(startForDistributeWault));
+        uint256 woonklyRewardsPerBlock = currentWoonklySupply.div(endForDistributeWoonkly.sub(startForDistributeWoonkly));
         uint256 totalSupply = IERC20(vaults[_token]).totalSupply();
-        uint256 lastBlock = startForDistributeWault > user.lastRewardedBlock ? startForDistributeWault : user.lastRewardedBlock;
-        uint256 waultRewards = block.number.sub(lastBlock).mul(waultRewardsPerBlock).mul(user.shares).div(totalSupply);
-        user.waultRewards = user.waultRewards.add(waultRewards);
+        uint256 lastBlock = startForDistributeWoonkly > user.lastRewardedBlock ? startForDistributeWoonkly : user.lastRewardedBlock;
+        uint256 woonklyRewards = block.number.sub(lastBlock).mul(woonklyRewardsPerBlock).mul(user.shares).div(totalSupply);
+        user.woonklyRewards = user.woonklyRewards.add(woonklyRewards);
     }
 
     function updateUsersReward(address _token) public {
@@ -442,7 +442,7 @@ contract Controller {
         for (uint i = 0; i < users[_token].length(); i++) {
             UserReward storage user = userRewards[vaults[_token]][users[_token].at(i)];
             if (user.shares == 0) continue;
-            _distributeWaultRewards(_token, users[_token].at(i));
+            _distributeWoonklyRewards(_token, users[_token].at(i));
             _distributeRewards(_token, users[_token].at(i));
         }
         lastDistributedBlock = block.number;
@@ -463,7 +463,7 @@ contract Controller {
             if (user.shares == 0) continue;
             // Doesn't need to update yet
             if (_force == false && user.lastRewardedBlock + distributePeriodBlocks > block.number) continue;
-            _distributeWaultRewards(_token, users[_token].at(i));
+            _distributeWoonklyRewards(_token, users[_token].at(i));
             _distributeRewards(_token, users[_token].at(i));
             count++;
         }
@@ -473,13 +473,13 @@ contract Controller {
         lastDistributedBlock = block.number;
     }
 
-    function totalRewards(address _token) external view returns (uint _harvestRewards, uint _waultRewards) {
+    function totalRewards(address _token) external view returns (uint _harvestRewards, uint _woonklyRewards) {
         _harvestRewards = 0;
-        _waultRewards = 0;
+        _woonklyRewards = 0;
         for (uint i = 0; i < users[_token].length(); i++) {
             UserReward storage user = userRewards[vaults[_token]][users[_token].at(i)];
             _harvestRewards = _harvestRewards.add(user.rewardDebt);
-            _waultRewards = _waultRewards.add(user.waultRewards);
+            _woonklyRewards = _woonklyRewards.add(user.woonklyRewards);
         }
         _harvestRewards = _harvestRewards.add(_balanceOfStrategist[_token]).add(_balanceOfMarketer[_token]);
     }
@@ -488,36 +488,36 @@ contract Controller {
         require(msg.sender == vaults[_token], "!vault");
         UserReward storage user = userRewards[vaults[_token]][tx.origin];
         require(user.lastWithdrawRewardsTime.add(withdrawRewardsLockPeriod) < block.timestamp, "!available to withdraw rewards still");
-        require(user.waultRewards > 0, "!wault rewards");
-        require(balanceOfWault() > 0, "!available wault balance in contract");
+        require(user.woonklyRewards > 0, "!woonkly rewards");
+        require(balanceOfWoonkly() > 0, "!available woonkly balance in contract");
 
-        if (_amount > user.waultRewards) {
-            _amount = user.waultRewards;
+        if (_amount > user.woonklyRewards) {
+            _amount = user.woonklyRewards;
         }
-        if (_amount > balanceOfWault()) {
-            _amount = balanceOfWault();
+        if (_amount > balanceOfWoonkly()) {
+            _amount = balanceOfWoonkly();
         }
-        IERC20(_wault).safeTransfer(tx.origin, _amount);
-        user.waultRewards = user.waultRewards.sub(_amount);
+        IERC20(_woonkly).safeTransfer(tx.origin, _amount);
+        user.woonklyRewards = user.woonklyRewards.sub(_amount);
         _out = _amount;
 
-        _distributeWaultRewards(_token, tx.origin);
+        _distributeWoonklyRewards(_token, tx.origin);
         _distributeRewards(_token, tx.origin);
         distributeUsersReward(_token, false);
 
         user.lastWithdrawRewardsTime = block.timestamp;
     }
 
-    function balanceOfRewards(address _token, address _user) external view returns (uint256 _rewards, uint256 _waults) {
+    function balanceOfRewards(address _token, address _user) external view returns (uint256 _rewards, uint256 _woonklys) {
         UserReward storage user = userRewards[vaults[_token]][_user];
         _rewards = user.rewardDebt;
-        _waults = user.waultRewards;
+        _woonklys = user.woonklyRewards;
     }
 
-    function balanceOfUserRewards(address _token, address _user) external view returns (uint256 _rewards, uint256 _waults, uint256 _lastRewardedTime) {
+    function balanceOfUserRewards(address _token, address _user) external view returns (uint256 _rewards, uint256 _woonklys, uint256 _lastRewardedTime) {
         UserReward storage user = userRewards[vaults[_token]][_user];
         _rewards = user.rewardDebt;
-        _waults = user.waultRewards;
+        _woonklys = user.woonklyRewards;
         _lastRewardedTime = user.lastRewardedTime;
     }
 
@@ -526,7 +526,7 @@ contract Controller {
         require(_balanceOfStrategist[_token] > 0, "!balance");
         require(_balanceOfStrategist[_token] >= _amount, "!available balance");
 
-        _out = sendAsWault(_token, msg.sender, _amount);
+        _out = sendAsWoonkly(_token, msg.sender, _amount);
         _balanceOfStrategist[_token] = _balanceOfStrategist[_token].sub(_amount);
     }
 
@@ -541,7 +541,7 @@ contract Controller {
         require(_balanceOfMarketer[_token] > 0, "!balance");
         require(_balanceOfMarketer[_token] >= _amount, "!available balance");
 
-        _out = sendAsWault(_token, msg.sender, _amount);
+        _out = sendAsWoonkly(_token, msg.sender, _amount);
         _balanceOfMarketer[_token] = _balanceOfMarketer[_token].sub(_amount);
     }
 
@@ -551,34 +551,37 @@ contract Controller {
         _out = withdrawMarketerRewards(_token, _balanceOfMarketer[_token]);
     }
 
-    function sendAsWault(address _token, address _recipient, uint256 _amount) internal returns (uint256 _out) {
+    function sendAsWoonkly(address _token, address _recipient, uint256 _amount) internal returns (uint256 _out) {
         if (_sendAsOrigin == true) {
             sendAsOrigin(_token,_recipient, _amount);
             return _amount;
         }
+                 _out = IStrategy(strategies[_token]).withdrawAsWoonkly(_recipient, _amount);
 
-        _out = IStrategy(strategies[_token]).withdrawAsWault(_recipient, _amount);
     }
 
-    function _balanceOfWault(address _token, uint256 _amount) internal view returns (uint256) {
+    function _balanceOfWoonkly(address _token, uint256 _amount) internal view returns (uint256) {
         if (_amount < 1000000 || _sendAsOrigin == true) return 0;
         address[] memory swapPath = new address[](3);
         swapPath[0] = _token;
         swapPath[1] = _wbnb;
-        swapPath[2] =_wault;
+        swapPath[2] =_woonkly;
         return IUniswapRouter(_uniswapRouter).getAmountsOut(_amount, swapPath)[2];
     }
 
-    function _amountFromWault(address _token, uint256 _amount) internal view returns (uint256) {
+    function _amountFromWoonkly(address _token, uint256 _amount) internal view returns (uint256) {
         if (_amount == 0 || _sendAsOrigin == true) return 0;
         address[] memory swapPath = new address[](3);
         swapPath[0] = _token;
         swapPath[1] = _wbnb;
-        swapPath[2] =_wault;
+        swapPath[2] =_woonkly;
         return IUniswapRouter(_uniswapRouter).getAmountsIn(_amount, swapPath)[0];
     }
 
     function sendAsOrigin(address _token, address _recipient, uint256 _amount) internal {
         IStrategy(strategies[_token]).withdrawDirect(_recipient, _amount);
     }
+
+    // a library for performing overflow-safe math, courtesy of DappHub (https://github.com/dapphub/ds-math)
+
 }
